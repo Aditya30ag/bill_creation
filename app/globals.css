@@ -38,36 +38,70 @@ body {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm;
+    margin: 6mm 8mm;
   }
 
-  body {
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
     background: #ffffff !important;
     color: #000000 !important;
     font-size: 11px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* Hide everything except print invoice area */
-  .no-print, nav, header, aside, .print-hide {
-    display: none !important;
+  /* Hide everything on screen */
+  body * {
+    visibility: hidden;
   }
 
-  .print-only {
-    display: block !important;
+  /* Unhide the printable invoice and its descendants */
+  #printable-invoice,
+  #printable-invoice * {
+    visibility: visible !important;
   }
 
-  .print-container {
+  /* Position printable invoice at top-left of the physical page */
+  #printable-invoice {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 2mm !important;
     box-shadow: none !important;
-    border: 1px solid #000 !important;
+    border: 1px solid #000000 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
     page-break-after: avoid;
+  }
+
+  /* Cancel fixed modal positioning and backdrops during print */
+  .fixed, [role="dialog"], .backdrop-blur-sm {
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .no-print, nav, header, footer, aside, button, .print-hide {
+    display: none !important;
+    visibility: hidden !important;
   }
 
   table {
     page-break-inside: auto;
+    width: 100% !important;
   }
 
   tr {

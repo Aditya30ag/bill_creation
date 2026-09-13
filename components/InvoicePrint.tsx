@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
-import { Printer, ArrowLeft } from "lucide-react";
+import React, { useState } from "react";
+import { Printer, ArrowLeft, Download, ExternalLink, Loader2, Check } from "lucide-react";
 import { Bill } from "@/lib/types";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { exportInvoiceToPdf } from "@/lib/pdf";
 import { Button } from "./ui/Button";
 
 interface InvoicePrintProps {
@@ -17,8 +18,35 @@ export function InvoicePrint({
   onBack,
   showActions = true,
 }: InvoicePrintProps) {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfSuccess, setPdfSuccess] = useState(false);
+
   const handlePrint = () => {
+    // Ensure body overflow isn't restricted by modal dialogs during printing
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "visible";
+
     window.print();
+
+    // Restore overflow after print dialog closes
+    setTimeout(() => {
+      document.body.style.overflow = prevOverflow;
+    }, 500);
+  };
+
+  const handleDownloadPdf = async () => {
+    setIsGeneratingPdf(true);
+    setPdfSuccess(false);
+    try {
+      await exportInvoiceToPdf("printable-invoice", `Invoice_${bill.invoiceNo}.pdf`);
+      setPdfSuccess(true);
+      setTimeout(() => setPdfSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to generate PDF", err);
+      alert("Could not generate PDF. You can also use the 'Print Invoice' button and choose 'Save as PDF'.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const { supplier, customer, items, summary, terms } = bill;
@@ -44,8 +72,45 @@ export function InvoicePrint({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="primary" size="md" onClick={handlePrint}>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`/bill/print/${bill.invoiceNo || bill.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" size="sm" title="Open full-page invoice in a new tab">
+                <ExternalLink className="h-4 w-4 mr-1.5" />
+                Open Full Tab
+              </Button>
+            </a>
+
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              title="Download PDF directly to your device"
+            >
+              {isGeneratingPdf ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin text-[#2563EB]" />
+                  Generating PDF...
+                </>
+              ) : pdfSuccess ? (
+                <>
+                  <Check className="h-4 w-4 mr-1.5 text-emerald-600" />
+                  PDF Saved!
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-1.5 text-[#2563EB]" />
+                  Download PDF
+                </>
+              )}
+            </Button>
+
+            <Button variant="primary" size="sm" onClick={handlePrint}>
               <Printer className="h-4 w-4 mr-1.5" />
               Print Invoice (A4)
             </Button>
@@ -54,7 +119,10 @@ export function InvoicePrint({
       )}
 
       {/* Printable Invoice Container */}
-      <div className="print-container mx-auto max-w-[850px] bg-white text-[#0F172A] border border-[#E2E8F0] rounded-[8px] p-6 text-xs leading-normal shadow-sm">
+      <div
+        id="printable-invoice"
+        className="print-container mx-auto max-w-[850px] bg-white text-[#0F172A] border border-[#E2E8F0] rounded-[8px] p-6 text-xs leading-normal shadow-sm"
+      >
         {/* Title & Badge */}
         <div className="border-b-2 border-slate-800 pb-3 mb-3 text-center relative">
           <div className="inline-block border border-slate-800 px-3 py-0.5 font-bold uppercase tracking-wider text-[11px]">
@@ -100,7 +168,7 @@ export function InvoicePrint({
               <span className="font-semibold text-slate-900">{bill.paymentMode || "Credit"}</span>
             </div>
             <div className="flex justify-between border-b border-slate-200 pb-1">
-              <span className="text-slate-600">State & Code:</span>
+              <span className="text-slate-600">State &amp; Code:</span>
               <span className="font-medium text-slate-900">
                 {supplier.state} ({supplier.stateCode})
               </span>
@@ -204,8 +272,8 @@ export function InvoicePrint({
                 </tr>
               ))}
 
-              {/* Pad empty rows if items < 6 to maintain nice A4 height */}
-              {Array.from({ length: Math.max(0, 5 - items.length) }).map((_, padIdx) => (
+              {/* Pad empty rows if items < 4 to maintain nice print height */}
+              {Array.from({ length: Math.max(0, 4 - items.length) }).map((_, padIdx) => (
                 <tr key={`pad-${padIdx}`} className="h-6 text-transparent select-none">
                   <td className="border-r border-slate-200">&nbsp;</td>
                   <td className="border-r border-slate-200">&nbsp;</td>
@@ -352,7 +420,7 @@ export function InvoicePrint({
 
             <div>
               <span className="font-bold uppercase text-slate-800 block mb-0.5">
-                Terms & Conditions:
+                Terms &amp; Conditions:
               </span>
               <ul className="list-none space-y-0.5 text-slate-600">
                 {(terms && terms.length > 0 ? terms : [
